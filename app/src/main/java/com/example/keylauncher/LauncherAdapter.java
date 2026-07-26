@@ -11,6 +11,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.PopupMenu;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -107,49 +108,49 @@ public class LauncherAdapter extends RecyclerView.Adapter<LauncherAdapter.ViewHo
 
             menu.setOnMenuItemClickListener(menuItem -> {
 
-                switch (menuItem.getItemId()) {
+                int id = menuItem.getItemId();
 
-                    case R.id.menuRename:
+                if (id == R.id.menuRename) {
 
-                        return true;
+                    return true;
 
-                    case R.id.menuHide:
+                } else if (id == R.id.menuHide) {
 
-                        settings.apps.hideApp(
-                                item.getPackageName());
+                    settings.apps.hideApp(
+                            item.getPackageName());
 
-                        items.remove(holder.getAdapterPosition());
+                    items.remove(holder.getAdapterPosition());
 
-                        notifyItemRemoved(holder.getAdapterPosition());
+                    notifyItemRemoved(holder.getAdapterPosition());
 
-                        return true;
+                    return true;
 
-                    case R.id.menuMove:
+                } else if (id == R.id.menuMove) {
 
-                        if (moveListener != null) {
-                            moveListener.onMoveRequested(item);
-                        }
+                    if (moveListener != null) {
+                        moveListener.onMoveRequested(item);
+                    }
 
-                        return true;
+                    return true;
 
-                    case R.id.menuAssignKey:
+                } else if (id == R.id.menuAssignKey) {
 
-                        showAssignKeyDialog(item);
+                    showAssignKeyDialog(item);
 
-                        return true;
+                    return true;
 
-                    case R.id.menuUninstall:
+                } else if (id == R.id.menuUninstall) {
 
-                        Intent uninstall =
-                                new Intent(
-                                        Intent.ACTION_DELETE,
-                                        Uri.parse(
-                                                "package:"
-                                                        + item.getPackageName()));
+                    Intent uninstall =
+                            new Intent(
+                                    Intent.ACTION_DELETE,
+                                    Uri.parse(
+                                            "package:"
+                                                    + item.getPackageName()));
 
-                        context.startActivity(uninstall);
+                    context.startActivity(uninstall);
 
-                        return true;
+                    return true;
 
                 }
 
