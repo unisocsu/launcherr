@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/blue_primary"
+        app:title="@string/app_name"
+        app:titleTextColor="@android:color/white"/>
+
+    <!-- אזור הווידג'טים -->
+    <FrameLayout
+        android:id="@+id/widgetContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="0dp"
+        android:visibility="gone"
+        android:padding="8dp"/>
+
+    <!-- רשת האפליקציות -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/appsRecycler"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="8dp"
+        android:clipToPadding="false"
+        android:scrollbars="vertical"
+        android:descendantFocusability="afterDescendants"
+        android:focusable="true"/>
+
+</LinearLayout>

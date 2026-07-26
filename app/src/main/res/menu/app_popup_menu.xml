@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/menuRename"
+        android:title="@string/rename"
+        android:showAsAction="never"/>
+
+    <item
+        android:id="@+id/menuMove"
+        android:title="@string/move"
+        android:showAsAction="never"/>
+
+    <item
+        android:id="@+id/menuHide"
+        android:title="@string/hide"
+        android:showAsAction="never"/>
+
+    <item
+        android:id="@+id/menuUninstall"
+        android:title="@string/uninstall"
+        android:showAsAction="never"/>
+
+</menu>
