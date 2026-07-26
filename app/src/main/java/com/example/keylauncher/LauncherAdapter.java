@@ -1,5 +1,6 @@
 package com.example.keylauncher;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -29,12 +30,15 @@ public class LauncherAdapter extends RecyclerView.Adapter<LauncherAdapter.ViewHo
 
     private OnItemMoveListener moveListener;
 
-    public LauncherAdapter(Context context, SettingsManager settings) {
+    public LauncherAdapter(Context context,
+                           SettingsManager settings) {
+
         this.context = context;
         this.settings = settings;
     }
 
     public void setItems(List<LauncherItem> list) {
+
         items.clear();
 
         if (list != null) {
@@ -54,88 +58,160 @@ public class LauncherAdapter extends RecyclerView.Adapter<LauncherAdapter.ViewHo
 
     @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent,
+                                         int viewType) {
 
         View view = LayoutInflater.from(context)
-                .inflate(R.layout.item_launcher, parent, false);
+                .inflate(R.layout.item_launcher,
+                        parent,
+                        false);
 
         return new ViewHolder(view);
+
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull ViewHolder holder,
+                                 int position) {
 
         LauncherItem item = items.get(position);
 
         holder.title.setText(item.getTitle());
+
         holder.icon.setImageDrawable(item.getIcon());
 
         holder.itemView.setOnClickListener(v -> {
 
-            if (!item.isApplication()) {
+            if (!item.isApplication())
                 return;
-            }
 
-            Intent intent = context.getPackageManager()
-                    .getLaunchIntentForPackage(item.getPackageName());
+            Intent intent =
+                    context.getPackageManager()
+                            .getLaunchIntentForPackage(
+                                    item.getPackageName());
 
             if (intent != null) {
                 context.startActivity(intent);
             }
+
         });
 
         holder.itemView.setOnLongClickListener(v -> {
 
             PopupMenu menu = new PopupMenu(context, v);
+
             MenuInflater inflater = menu.getMenuInflater();
-            inflater.inflate(R.menu.app_popup_menu, menu.getMenu());
+
+            inflater.inflate(R.menu.app_popup_menu,
+                    menu.getMenu());
 
             menu.setOnMenuItemClickListener(menuItem -> {
 
-                int id = menuItem.getItemId();
+                switch (menuItem.getItemId()) {
 
-                if (id == R.id.menuRename) {
+                    case R.id.menuRename:
 
-                    return true;
+                        return true;
 
-                } else if (id == R.id.menuHide) {
+                    case R.id.menuHide:
 
-                    settings.apps.hideApp(item.getPackageName());
+                        settings.apps.hideApp(
+                                item.getPackageName());
 
-                    int pos = holder.getBindingAdapterPosition();
+                        items.remove(holder.getAdapterPosition());
 
-                    if (pos != RecyclerView.NO_POSITION) {
-                        items.remove(pos);
-                        notifyItemRemoved(pos);
-                    }
+                        notifyItemRemoved(holder.getAdapterPosition());
 
-                    return true;
+                        return true;
 
-                } else if (id == R.id.menuMove) {
+                    case R.id.menuMove:
 
-                    if (moveListener != null) {
-                        moveListener.onMoveRequested(item);
-                    }
+                        if (moveListener != null) {
+                            moveListener.onMoveRequested(item);
+                        }
 
-                    return true;
+                        return true;
 
-                } else if (id == R.id.menuUninstall) {
+                    case R.id.menuAssignKey:
 
-                    Intent uninstall = new Intent(
-                            Intent.ACTION_DELETE,
-                            Uri.parse("package:" + item.getPackageName()));
+                        showAssignKeyDialog(item);
 
-                    context.startActivity(uninstall);
+                        return true;
 
-                    return true;
+                    case R.id.menuUninstall:
+
+                        Intent uninstall =
+                                new Intent(
+                                        Intent.ACTION_DELETE,
+                                        Uri.parse(
+                                                "package:"
+                                                        + item.getPackageName()));
+
+                        context.startActivity(uninstall);
+
+                        return true;
+
                 }
 
                 return false;
+
             });
 
             menu.show();
+
             return true;
+
         });
+
+    }
+
+    private void showAssignKeyDialog(LauncherItem item) {
+
+        String[] labels = new String[10];
+
+        for (int digit = 0; digit <= 9; digit++) {
+
+            String pkg = settings.shortcuts.getPackageForDigit(digit);
+
+            String status = (pkg == null)
+                    ? context.getString(R.string.assign_key_free)
+                    : titleForPackage(pkg);
+
+            labels[digit] = digit + " - " + status;
+        }
+
+        new AlertDialog.Builder(context)
+                .setTitle(R.string.assign_key_title)
+                .setItems(labels, (dialog, which) -> {
+
+                    int digit = which;
+
+                    settings.shortcuts.setPackageForDigit(
+                            digit, item.getPackageName());
+
+                    Toast.makeText(
+                            context,
+                            context.getString(
+                                    R.string.assign_key_set,
+                                    item.getTitle(),
+                                    digit),
+                            Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private String titleForPackage(String packageName) {
+
+        for (LauncherItem it : items) {
+
+            if (packageName.equals(it.getPackageName())) {
+                return it.getTitle();
+            }
+
+        }
+
+        return packageName;
     }
 
     @Override
@@ -143,16 +219,22 @@ public class LauncherAdapter extends RecyclerView.Adapter<LauncherAdapter.ViewHo
         return items.size();
     }
 
-    static class ViewHolder extends RecyclerView.ViewHolder {
+    static class ViewHolder
+            extends RecyclerView.ViewHolder {
 
         ImageView icon;
         TextView title;
 
         ViewHolder(View itemView) {
+
             super(itemView);
 
             icon = itemView.findViewById(R.id.icon);
+
             title = itemView.findViewById(R.id.title);
+
         }
+
     }
+
 }
