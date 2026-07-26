@@ -15,6 +15,7 @@ public class SettingsManager {
     public final KeySettings keys;
     public final MouseSettings mouse;
     public final BackupSettings backup;
+    public final ShortcutSettings shortcuts;
 
     public SettingsManager(Context context) {
 
@@ -30,6 +31,7 @@ public class SettingsManager {
         keys = new KeySettings(store);
         mouse = new MouseSettings(store);
         backup = new BackupSettings(store);
+        shortcuts = new ShortcutSettings(store);
 
     }
 
