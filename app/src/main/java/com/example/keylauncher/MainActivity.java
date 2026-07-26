@@ -4,6 +4,8 @@ import android.appwidget.AppWidgetHost;
 import android.appwidget.AppWidgetHostView;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProviderInfo;
+import android.app.WallpaperManager;
+import android.graphics.drawable.Drawable;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -79,6 +81,9 @@ public class MainActivity extends AppCompatActivity
 
         setContentView(R.layout.activity_main);
 
+        // הגדרת הטפט המערכתי כרקע של המסך הראשי 🖼️
+        setSystemWallpaperAsBackground();
+
         initializeManagers();
 
         initializeRecyclerView();
@@ -86,6 +91,27 @@ public class MainActivity extends AppCompatActivity
         loadApplications();
 
         restoreWidgets();
+    }
+
+    /* ===========================
+       הגדרת טפט המערכת כרקע
+       =========================== */
+
+    private void setSystemWallpaperAsBackground() {
+        try {
+            WallpaperManager wallpaperManager = WallpaperManager.getInstance(this);
+            Drawable wallpaperDrawable = wallpaperManager.getDrawable();
+            
+            if (wallpaperDrawable != null) {
+                // ודא שה-ID של ה-Layout הראשי בקובץ activity_main.xml הוא rootLayout (או שנה בהתאם)
+                View rootView = findViewById(R.id.rootLayout); 
+                if (rootView != null) {
+                    rootView.setBackground(wallpaperDrawable);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /* ===========================
@@ -175,7 +201,7 @@ public class MainActivity extends AppCompatActivity
 
             @Override
             public boolean isLongPressDragEnabled() {
-                // הגרירה מופעלת ידנית מתוך תפריט "הזז" (ראו onMoveRequested).
+                // הגרירה מופעלת ידנית מתוך תפריט "הזז".
                 return false;
             }
         };
@@ -349,7 +375,6 @@ public class MainActivity extends AppCompatActivity
                 appWidgetManager.getAppWidgetInfo(lastWidgetId);
 
         if (info == null) {
-            // הווידג'ט כבר לא קיים (הוסר/הוסרה האפליקציה שלו).
             settings.widgets.setLastWidgetId(-1);
             return;
         }
@@ -478,10 +503,6 @@ public class MainActivity extends AppCompatActivity
         return super.onKeyDown(keyCode, event);
     }
 
-    /**
-     * ממיר קוד מקש למספר 0-9 (תומך גם במקלדת ראשית וגם ב-Numpad),
-     * או מחזיר -1- אם זה לא מקש ספרה.
-     */
     private int digitFromKeyCode(int keyCode) {
 
         if (keyCode >= KeyEvent.KEYCODE_0 && keyCode <= KeyEvent.KEYCODE_9) {
@@ -495,12 +516,6 @@ public class MainActivity extends AppCompatActivity
         return -1;
     }
 
-    /**
-     * קיצור מקשים: אם הוגדר שיוך מותאם אישית לספרה הזו (דרך התפריט
-     * "הקצה למקש מספרי" על אייקון), פותח את האפליקציה הזו ישירות.
-     * אחרת, נופל חזרה להתנהגות ברירת המחדל - ממקד את האייקון
-     * במיקום המתאים ברשת (1="1", ...,9="9", 0=מיקום 10).
-     */
     private void focusItemAtDigit(int digit) {
 
         String assignedPackage =
@@ -621,6 +636,5 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onBackPressed() {
         // זהו לאנצ'ר (HOME) - לא יוצאים ממנו בלחיצת "חזרה".
-        // (אם רוצים לאפשר יציאה בכל זאת, יש להחליף לשורה: super.onBackPressed();)
     }
 }
