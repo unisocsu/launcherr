@@ -12,6 +12,11 @@
         android:showAsAction="never"/>
 
     <item
+        android:id="@+id/menuAssignKey"
+        android:title="@string/assign_key"
+        android:showAsAction="never"/>
+
+    <item
         android:id="@+id/menuHide"
         android:title="@string/hide"
         android:showAsAction="never"/>
