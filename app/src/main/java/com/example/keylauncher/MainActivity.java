@@ -496,10 +496,21 @@ public class MainActivity extends AppCompatActivity
     }
 
     /**
-     * קיצור מקשים בסגנון טלפון-מקשים: מקש "1" ממקד את האייקון הראשון,
-     * "2" את השני וכן הלאה, "0" את העשירי. גלילה אוטומטית אם צריך.
+     * קיצור מקשים: אם הוגדר שיוך מותאם אישית לספרה הזו (דרך התפריט
+     * "הקצה למקש מספרי" על אייקון), פותח את האפליקציה הזו ישירות.
+     * אחרת, נופל חזרה להתנהגות ברירת המחדל - ממקד את האייקון
+     * במיקום המתאים ברשת (1="1", ...,9="9", 0=מיקום 10).
      */
     private void focusItemAtDigit(int digit) {
+
+        String assignedPackage =
+                settings.shortcuts.getPackageForDigit(digit);
+
+        if (assignedPackage != null) {
+
+            launchPackage(assignedPackage);
+            return;
+        }
 
         int position = (digit == 0) ? 9 : digit - 1;
 
@@ -519,6 +530,17 @@ public class MainActivity extends AppCompatActivity
             }
 
         });
+    }
+
+    private void launchPackage(String packageName) {
+
+        Intent intent =
+                getPackageManager()
+                        .getLaunchIntentForPackage(packageName);
+
+        if (intent != null) {
+            startActivity(intent);
+        }
     }
 
     private boolean searchDialogIsShowing() {
