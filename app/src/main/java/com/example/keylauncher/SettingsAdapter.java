@@ -5,7 +5,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -51,51 +50,35 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.ViewHo
             switch (position) {
 
                 case 0:
-                    Toast.makeText(context,
-                            "הגדרות מסך הבית",
-                            Toast.LENGTH_SHORT).show();
+                    SettingsDialogs.showDisplayDialog(context, settings);
                     break;
 
                 case 1:
-                    Toast.makeText(context,
-                            "הגדרות ווידג'טים",
-                            Toast.LENGTH_SHORT).show();
+                    SettingsDialogs.showWidgetsDialog(context, settings);
                     break;
 
                 case 2:
-                    Toast.makeText(context,
-                            "הגדרות אפליקציות",
-                            Toast.LENGTH_SHORT).show();
+                    SettingsDialogs.showAppsDialog(context, settings);
                     break;
 
                 case 3:
-                    Toast.makeText(context,
-                            "הגדרות תיקיות",
-                            Toast.LENGTH_SHORT).show();
+                    SettingsDialogs.showFoldersDialog(context, settings);
                     break;
 
                 case 4:
-                    Toast.makeText(context,
-                            "הגדרות מקשים",
-                            Toast.LENGTH_SHORT).show();
+                    SettingsDialogs.showKeysDialog(context, settings);
                     break;
 
                 case 5:
-                    Toast.makeText(context,
-                            "הגדרות עכבר",
-                            Toast.LENGTH_SHORT).show();
+                    SettingsDialogs.showMouseDialog(context, settings);
                     break;
 
                 case 6:
-                    Toast.makeText(context,
-                            "גיבוי ושחזור",
-                            Toast.LENGTH_SHORT).show();
+                    SettingsDialogs.showBackupDialog(context, settings);
                     break;
 
                 case 7:
-                    Toast.makeText(context,
-                            "KeyLauncher",
-                            Toast.LENGTH_SHORT).show();
+                    SettingsDialogs.showAboutDialog(context, settings);
                     break;
 
             }
