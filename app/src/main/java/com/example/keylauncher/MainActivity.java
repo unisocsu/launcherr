@@ -23,7 +23,7 @@ public class MainActivity extends AppCompatActivity {
         // הרצת פעולות Root בתוך Background Thread כדי לא לתקוע את ה-UI
         new Thread(new Runnable() {
             @Override
-            .run() {
+            public void run() { // 👈 כאן היה התיקון: שונה מ-.run() ל-public void run()
                 Process process = null;
                 DataOutputStream outputStream = null;
                 try {
@@ -31,7 +31,7 @@ public class MainActivity extends AppCompatActivity {
                     process = Runtime.getRuntime().exec("su");
                     outputStream = new DataOutputStream(process.getOutputStream());
 
-                    // דוגמה להרצת פקודת מערכת (כמו שליחת אירוע מקש או הפעלת מאפייני עכבר)
+                    // שליחת פקודת מערכת (לדוגמה: אירוע מקש 20)
                     outputStream.writeBytes("input keyevent 20\n");
                     outputStream.flush();
 
