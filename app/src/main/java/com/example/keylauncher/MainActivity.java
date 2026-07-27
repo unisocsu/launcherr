@@ -5,9 +5,11 @@ import android.appwidget.AppWidgetHostView;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProviderInfo;
 import android.app.WallpaperManager;
-import android.graphics.drawable.Drawable;
+import android.content.ContentResolver;
 import android.content.Intent;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -24,6 +26,7 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -314,15 +317,15 @@ public class MainActivity extends AppCompatActivity
     }
 
     /* ===========================
-       מקשי חומרה (כולל עדכון מקש חיוג) 📞
+       מקשי חומרה (ניהול עכבר וירטואלי וחייגן) 📞🖱️
        =========================== */
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (settings.keys.isHardwareKeysEnabled() && keyCode == KeyEvent.KEYCODE_CALL) {
-            // לחיצה קצרה על מקש חיוג - הפעלת מצב עכבר 🖱️
-            settings.mouse.setEnabled(true);
-            Toast.makeText(this, "מצב עכבר הופעל", Toast.LENGTH_SHORT).show();
+            if (event.getRepeatCount() == 0) {
+                event.startTracking(); // חובה כדי לאפשר זיהוי לחיצה ארוכה
+            }
             return true;
         }
 
@@ -338,12 +341,61 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onKeyLongPress(int keyCode, KeyEvent event) {
         if (settings.keys.isHardwareKeysEnabled() && keyCode == KeyEvent.KEYCODE_CALL) {
-            // לחיצה ארוכה על מקש חיוג - פתיחת החייגן 📱
+            // לחיצה ארוכה על מקש חיוג - פתיחת החייגן המובנה של המכשיר 📱
             startActivity(new Intent(Intent.ACTION_DIAL));
             return true;
         }
 
         return super.onKeyLongPress(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (settings.keys.isHardwareKeysEnabled() && keyCode == KeyEvent.KEYCODE_CALL) {
+            if (event.isTracking() && !event.isCanceled()) {
+                // לחיצה קצרה על מקש חיוג - הפעלת מצב עכבר ועדכון הגדרות המערכת 🖱️
+                toggleMouseSupportAndEnable();
+            }
+            return true;
+        }
+        return super.onKeyUp(keyCode, event);
+    }
+
+    private void toggleMouseSupportAndEnable() {
+        // 1. הפעלת מצב עכבר בהגדרות הפנימיות של הלאנצ'ר
+        settings.mouse.setEnabled(true);
+
+        // 2. עדכון רשימת החביפות המורשות ב־Settings.Global עבור העכבר הווירטואלי
+        try {
+            ContentResolver resolver = getContentResolver();
+            String currentList = Settings.Global.getString(resolver, "mouse_support_list");
+            String packageName = getPackageName(); // com.example.keylauncher
+
+            if (currentList == null) {
+                currentList = "";
+            }
+
+            List<String> packages = new ArrayList<>(Arrays.asList(currentList.split(",")));
+            packages.removeIf(String::isEmpty);
+
+            if (!packages.contains(packageName)) {
+                packages.add(packageName);
+            }
+
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < packages.size(); i++) {
+                sb.append(packages.get(i));
+                if (i < packages.size() - 1) {
+                    sb.append(",");
+                }
+            }
+
+            Settings.Global.putString(resolver, "mouse_support_list", sb.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        Toast.makeText(this, "מצב עכבר הופעל עבור הלאנצ'ר 🖱️", Toast.LENGTH_SHORT).show();
     }
 
     private int digitFromKeyCode(int keyCode) {
