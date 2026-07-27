@@ -1,0 +1,597 @@
+package com.example.keylauncher;
+
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.text.InputType;
+import android.view.Gravity;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.Spinner;
+import android.widget.Switch;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.DateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+/**
+ * דיאלוגים אמיתיים לכל קטגוריית הגדרות - מחליפים את ה-Toast placeholder
+ * שהיה קודם. כל דיאלוג בנוי פרוגרמטית (בלי layout xml נוסף), קורא
+ * ערכים נוכחיים מ-SettingsManager, ושומר אותם בחזרה בלחיצה על "שמור".
+ */
+public class SettingsDialogs {
+
+    private SettingsDialogs() {
+    }
+
+    private static final int PAD = 32;
+
+    /* ===========================
+       כלי עזר כלליים לבניית הדיאלוג
+       =========================== */
+
+    private static LinearLayout newContainer(Context context) {
+
+        LinearLayout layout = new LinearLayout(context);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(PAD, PAD, PAD, PAD);
+
+        return layout;
+    }
+
+    private static void addLabel(Context context, LinearLayout parent, String text) {
+
+        TextView label = new TextView(context);
+        label.setText(text);
+        label.setTextColor(context.getResources().getColor(R.color.text_secondary));
+        label.setPadding(0, 24, 0, 4);
+
+        parent.addView(label);
+    }
+
+    private static Switch addSwitchRow(Context context, LinearLayout parent,
+                                        String label, boolean initialValue) {
+
+        Switch sw = new Switch(context);
+        sw.setText(label);
+        sw.setChecked(initialValue);
+        sw.setPadding(0, 16, 0, 16);
+
+        parent.addView(sw);
+
+        return sw;
+    }
+
+    private static EditText addNumberRow(Context context, LinearLayout parent,
+                                          String label, int initialValue) {
+
+        addLabel(context, parent, label);
+
+        EditText edit = new EditText(context);
+        edit.setInputType(InputType.TYPE_CLASS_NUMBER);
+        edit.setText(String.valueOf(initialValue));
+
+        parent.addView(edit);
+
+        return edit;
+    }
+
+    private static EditText addTextRow(Context context, LinearLayout parent,
+                                        String label, String initialValue) {
+
+        addLabel(context, parent, label);
+
+        EditText edit = new EditText(context);
+        edit.setInputType(InputType.TYPE_CLASS_TEXT);
+        edit.setText(initialValue);
+
+        parent.addView(edit);
+
+        return edit;
+    }
+
+    private static Spinner addSpinnerRow(Context context, LinearLayout parent,
+                                          String label, String[] options, int selectedIndex) {
+
+        addLabel(context, parent, label);
+
+        Spinner spinner = new Spinner(context);
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                context, android.R.layout.simple_spinner_dropdown_item, options);
+
+        spinner.setAdapter(adapter);
+
+        if (selectedIndex >= 0 && selectedIndex < options.length) {
+            spinner.setSelection(selectedIndex);
+        }
+
+        parent.addView(spinner);
+
+        return spinner;
+    }
+
+    private static int parseIntOrDefault(EditText edit, int fallback) {
+
+        try {
+            return Integer.parseInt(edit.getText().toString().trim());
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
+    private static ScrollView scrollable(Context context, LinearLayout content) {
+
+        ScrollView scroll = new ScrollView(context);
+        scroll.addView(content);
+
+        return scroll;
+    }
+
+    /* ===========================
+       1. מסך הבית (DisplaySettings)
+       =========================== */
+
+    public static void showDisplayDialog(Context context, SettingsManager settings) {
+
+        LinearLayout container = newContainer(context);
+
+        EditText gridColumns = addNumberRow(context, container,
+                "מספר עמודות ברשת (3-8)", settings.display.getGridColumns());
+
+        EditText iconSize = addNumberRow(context, container,
+                "גודל אייקון (32-128dp)", settings.display.getIconSize());
+
+        EditText textSize = addNumberRow(context, container,
+                "גודל טקסט (8-24sp)", settings.display.getTextSize());
+
+        Switch showLabels = addSwitchRow(context, container,
+                "הצג שמות אפליקציות", settings.display.isShowLabels());
+
+        Switch statusBar = addSwitchRow(context, container,
+                "הצג שורת מצב", settings.display.isStatusBarVisible());
+
+        Switch keepScreenOn = addSwitchRow(context, container,
+                "השאר מסך דלוק", settings.display.isKeepScreenOn());
+
+        Switch darkMode = addSwitchRow(context, container,
+                "מצב כהה", settings.display.isDarkMode());
+
+        EditText padding = addNumberRow(context, container,
+                "ריווח מסך הבית (0-64dp)", settings.display.getDesktopPadding());
+
+        new AlertDialog.Builder(context)
+                .setTitle("מסך הבית")
+                .setView(scrollable(context, container))
+                .setPositiveButton("שמור", (d, w) -> {
+
+                    settings.display.setGridColumns(parseIntOrDefault(gridColumns, 4));
+                    settings.display.setIconSize(parseIntOrDefault(iconSize, 56));
+                    settings.display.setTextSize(parseIntOrDefault(textSize, 12));
+                    settings.display.setShowLabels(showLabels.isChecked());
+                    settings.display.setStatusBarVisible(statusBar.isChecked());
+                    settings.display.setKeepScreenOn(keepScreenOn.isChecked());
+                    settings.display.setDarkMode(darkMode.isChecked());
+                    settings.display.setDesktopPadding(parseIntOrDefault(padding, 8));
+
+                    Toast.makeText(context,
+                            "נשמר. חלק מהשינויים ייכנסו לתוקף בפתיחה הבאה של הלאנצ'ר",
+                            Toast.LENGTH_LONG).show();
+                })
+                .setNegativeButton("ביטול", null)
+                .show();
+    }
+
+    /* ===========================
+       2. ווידג'טים (WidgetSettings)
+       =========================== */
+
+    public static void showWidgetsDialog(Context context, SettingsManager settings) {
+
+        LinearLayout container = newContainer(context);
+
+        Switch enabled = addSwitchRow(context, container,
+                "אפשר ווידג'טים", settings.widgets.isWidgetsEnabled());
+
+        addLabel(context, container,
+                "ווידג'ט מותקן כרגע: " +
+                        (settings.widgets.getLastWidgetId() != -1 ? "כן" : "לא"));
+
+        Button clearButton = new Button(context);
+        clearButton.setText("הסר ווידג'ט נוכחי");
+        container.addView(clearButton);
+
+        AlertDialog dialog = new AlertDialog.Builder(context)
+                .setTitle("ווידג'טים")
+                .setView(scrollable(context, container))
+                .setPositiveButton("שמור", (d, w) ->
+                        settings.widgets.setWidgetsEnabled(enabled.isChecked()))
+                .setNegativeButton("ביטול", null)
+                .create();
+
+        clearButton.setOnClickListener(v -> {
+
+            settings.widgets.setLayout("");
+            settings.widgets.setLastWidgetId(-1);
+            settings.widgets.setWidgetCount(0);
+
+            Toast.makeText(context, "הווידג'ט הוסר", Toast.LENGTH_SHORT).show();
+
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+    /* ===========================
+       3. אפליקציות (AppSettings)
+       =========================== */
+
+    public static void showAppsDialog(Context context, SettingsManager settings) {
+
+        LinearLayout container = newContainer(context);
+
+        String[] sortOptions = {"לפי שם", "לפי זמן התקנה", "לפי עדכון אחרון", "ידני (גרירה)"};
+
+        Spinner sortSpinner = addSpinnerRow(context, container,
+                "סדר מיון", sortOptions, settings.apps.getSortMode());
+
+        addLabel(context, container, "אפליקציות מוסתרות:");
+
+        List<String> hidden = new ArrayList<>(settings.apps.getHiddenApps());
+        PackageManager pm = context.getPackageManager();
+
+        if (hidden.isEmpty()) {
+
+            TextView empty = new TextView(context);
+            empty.setText("אין אפליקציות מוסתרות");
+            container.addView(empty);
+
+        } else {
+
+            for (String packageName : hidden) {
+
+                LinearLayout row = new LinearLayout(context);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+
+                String label;
+
+                try {
+                    label = pm.getApplicationLabel(
+                            pm.getApplicationInfo(packageName, 0)).toString();
+                } catch (PackageManager.NameNotFoundException e) {
+                    label = packageName;
+                }
+
+                TextView nameView = new TextView(context);
+                nameView.setText(label);
+                nameView.setLayoutParams(new LinearLayout.LayoutParams(
+                        0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+                Button unhideButton = new Button(context);
+                unhideButton.setText("הצג");
+
+                unhideButton.setOnClickListener(v -> {
+                    settings.apps.showApp(packageName);
+                    row.setVisibility(android.view.View.GONE);
+                    Toast.makeText(context, "האפליקציה תוצג שוב", Toast.LENGTH_SHORT).show();
+                });
+
+                row.addView(nameView);
+                row.addView(unhideButton);
+
+                container.addView(row);
+            }
+        }
+
+        new AlertDialog.Builder(context)
+                .setTitle("אפליקציות")
+                .setView(scrollable(context, container))
+                .setPositiveButton("שמור", (d, w) ->
+                        settings.apps.setSortMode(sortSpinner.getSelectedItemPosition()))
+                .setNegativeButton("סגור", null)
+                .show();
+    }
+
+    /* ===========================
+       4. תיקיות (FolderSettings)
+       =========================== */
+
+    public static void showFoldersDialog(Context context, SettingsManager settings) {
+
+        LinearLayout container = newContainer(context);
+
+        EditText defaultName = addTextRow(context, container,
+                "שם ברירת מחדל לתיקייה", settings.folders.getDefaultFolderName());
+
+        Switch autoClose = addSwitchRow(context, container,
+                "סגירה אוטומטית", settings.folders.isAutoCloseEnabled());
+
+        Switch confirmDelete = addSwitchRow(context, container,
+                "אישור לפני מחיקה", settings.folders.isConfirmDeleteEnabled());
+
+        Switch openAnimation = addSwitchRow(context, container,
+                "אנימציית פתיחה", settings.folders.isOpenAnimationEnabled());
+
+        Switch showItemCount = addSwitchRow(context, container,
+                "הצג מספר פריטים", settings.folders.isShowItemCountEnabled());
+
+        EditText maxColumns = addNumberRow(context, container,
+                "עמודות מקסימלי בתיקייה (2-6)", settings.folders.getMaxColumns());
+
+        new AlertDialog.Builder(context)
+                .setTitle("תיקיות")
+                .setView(scrollable(context, container))
+                .setPositiveButton("שמור", (d, w) -> {
+
+                    settings.folders.setDefaultFolderName(defaultName.getText().toString());
+                    settings.folders.setAutoCloseEnabled(autoClose.isChecked());
+                    settings.folders.setConfirmDeleteEnabled(confirmDelete.isChecked());
+                    settings.folders.setOpenAnimationEnabled(openAnimation.isChecked());
+                    settings.folders.setShowItemCountEnabled(showItemCount.isChecked());
+                    settings.folders.setMaxColumns(parseIntOrDefault(maxColumns, 4));
+                })
+                .setNegativeButton("ביטול", null)
+                .show();
+    }
+
+    /* ===========================
+       5. מקשים (KeySettings)
+       =========================== */
+
+    public static void showKeysDialog(Context context, SettingsManager settings) {
+
+        LinearLayout container = newContainer(context);
+
+        String[] actionNames = {
+                "ללא", "הפעל/כבה עכבר", "פתח חייגן", "פתח חיפוש", "פתח הגדרות", "הצג אפליקציות"
+        };
+
+        Switch hardwareKeys = addSwitchRow(context, container,
+                "אפשר מקשי חומרה", settings.keys.isHardwareKeysEnabled());
+
+        Spinner shortPress = addSpinnerRow(context, container,
+                "לחיצה קצרה על מקש החיוג", actionNames,
+                settings.keys.getCallShortPressAction());
+
+        Spinner longPress = addSpinnerRow(context, container,
+                "לחיצה ארוכה על מקש החיוג", actionNames,
+                settings.keys.getCallLongPressAction());
+
+        EditText timeout = addNumberRow(context, container,
+                "זמן ללחיצה ארוכה (מילישניות, 200-3000)",
+                settings.keys.getLongPressTimeout());
+
+        new AlertDialog.Builder(context)
+                .setTitle("מקשים")
+                .setView(scrollable(context, container))
+                .setPositiveButton("שמור", (d, w) -> {
+
+                    settings.keys.setHardwareKeysEnabled(hardwareKeys.isChecked());
+                    settings.keys.setCallShortPressAction(shortPress.getSelectedItemPosition());
+                    settings.keys.setCallLongPressAction(longPress.getSelectedItemPosition());
+                    settings.keys.setLongPressTimeout(parseIntOrDefault(timeout, 500));
+                })
+                .setNegativeButton("ביטול", null)
+                .show();
+    }
+
+    /* ===========================
+       6. עכבר (MouseSettings + מצב עכבר אמיתי של המערכת)
+       =========================== */
+
+    public static void showMouseDialog(Context context, SettingsManager settings) {
+
+        LinearLayout container = newContainer(context);
+
+        Switch enabled = addSwitchRow(context, container,
+                "מצב עכבר מופעל (מקומי)", settings.mouse.isEnabled());
+
+        Switch autoEnable = addSwitchRow(context, container,
+                "הפעלה אוטומטית", settings.mouse.isAutoEnable());
+
+        EditText pointerSpeed = addNumberRow(context, container,
+                "מהירות סמן (1-10)", settings.mouse.getPointerSpeed());
+
+        Switch cursorVisible = addSwitchRow(context, container,
+                "הצג סמן על המסך", settings.mouse.isCursorVisible());
+
+        boolean systemEnabled = SystemMouseBridge.isEnabledForPackage(
+                context.getContentResolver(), context.getPackageName());
+
+        addLabel(context, container,
+                "עכבר מערכת (mouse_support_list) עבור הלאנצ'ר: "
+                        + (systemEnabled ? "מופעל" : "כבוי"));
+
+        Button toggleSystemButton = new Button(context);
+        toggleSystemButton.setText(systemEnabled ? "כבה עכבר מערכת" : "הפעל עכבר מערכת");
+        container.addView(toggleSystemButton);
+
+        toggleSystemButton.setOnClickListener(v -> {
+
+            boolean newState = SystemMouseBridge.toggleForPackage(
+                    context.getContentResolver(), context.getPackageName());
+
+            Toast.makeText(context,
+                    newState
+                            ? "עכבר מערכת הופעל - נדרש הפעלה מחדש של הלאנצ'ר"
+                            : "עכבר מערכת כובה - נדרש הפעלה מחדש של הלאנצ'ר",
+                    Toast.LENGTH_LONG).show();
+        });
+
+        new AlertDialog.Builder(context)
+                .setTitle("עכבר")
+                .setView(scrollable(context, container))
+                .setPositiveButton("שמור", (d, w) -> {
+
+                    settings.mouse.setEnabled(enabled.isChecked());
+                    settings.mouse.setAutoEnable(autoEnable.isChecked());
+                    settings.mouse.setPointerSpeed(parseIntOrDefault(pointerSpeed, 5));
+                    settings.mouse.setCursorVisible(cursorVisible.isChecked());
+                })
+                .setNegativeButton("ביטול", null)
+                .show();
+    }
+
+    /* ===========================
+       7. גיבוי ושחזור (BackupSettings)
+       =========================== */
+
+    public static void showBackupDialog(Context context, SettingsManager settings) {
+
+        LinearLayout container = newContainer(context);
+
+        Switch enabled = addSwitchRow(context, container,
+                "גיבוי מופעל", settings.backup.isEnabled());
+
+        Switch autoBackup = addSwitchRow(context, container,
+                "גיבוי אוטומטי", settings.backup.isAutoBackupEnabled());
+
+        EditText fileName = addTextRow(context, container,
+                "שם קובץ הגיבוי", settings.backup.getBackupFileName());
+
+        long lastBackup = settings.backup.getLastBackupTime();
+
+        String lastBackupText = (lastBackup == 0)
+                ? "גיבוי אחרון: מעולם לא"
+                : "גיבוי אחרון: " + DateFormat.getDateTimeInstance().format(new Date(lastBackup));
+
+        TextView lastBackupView = new TextView(context);
+        lastBackupView.setText(lastBackupText);
+        lastBackupView.setPadding(0, 24, 0, 8);
+        container.addView(lastBackupView);
+
+        Button backupNowButton = new Button(context);
+        backupNowButton.setText("גבה עכשיו");
+        container.addView(backupNowButton);
+
+        backupNowButton.setOnClickListener(v -> {
+
+            boolean success = performBackup(context, settings, fileName.getText().toString());
+
+            if (success) {
+
+                settings.backup.setLastBackupTime(System.currentTimeMillis());
+
+                lastBackupView.setText("גיבוי אחרון: " +
+                        DateFormat.getDateTimeInstance().format(new Date()));
+
+                Toast.makeText(context, "הגיבוי נשמר בהצלחה", Toast.LENGTH_SHORT).show();
+
+            } else {
+
+                Toast.makeText(context, "הגיבוי נכשל", Toast.LENGTH_SHORT).show();
+            }
+
+        });
+
+        new AlertDialog.Builder(context)
+                .setTitle("גיבוי ושחזור")
+                .setView(scrollable(context, container))
+                .setPositiveButton("שמור הגדרות", (d, w) -> {
+
+                    settings.backup.setEnabled(enabled.isChecked());
+                    settings.backup.setAutoBackupEnabled(autoBackup.isChecked());
+                    settings.backup.setBackupFileName(fileName.getText().toString());
+                })
+                .setNegativeButton("סגור", null)
+                .show();
+    }
+
+    /**
+     * שומר גיבוי JSON פשוט (הגדרות עיקריות + רשימת אפליקציות מוסתרות)
+     * לתוך אחסון פנימי של האפליקציה.
+     */
+    private static boolean performBackup(Context context, SettingsManager settings, String fileName) {
+
+        if (fileName == null || fileName.trim().isEmpty()) {
+            fileName = "KeyLauncher_Backup.json";
+        }
+
+        try {
+            org.json.JSONObject json = new org.json.JSONObject();
+
+            json.put("gridColumns", settings.display.getGridColumns());
+            json.put("iconSize", settings.display.getIconSize());
+            json.put("textSize", settings.display.getTextSize());
+            json.put("darkMode", settings.display.isDarkMode());
+            json.put("hiddenApps", new org.json.JSONArray(settings.apps.getHiddenApps()));
+            json.put("hardwareKeysEnabled", settings.keys.isHardwareKeysEnabled());
+            json.put("mouseEnabled", settings.mouse.isEnabled());
+            json.put("desktopLayout", settings.desktop.getLayout());
+            json.put("timestamp", System.currentTimeMillis());
+
+            File file = new File(context.getFilesDir(), fileName);
+
+            try (FileOutputStream out = new FileOutputStream(file)) {
+                out.write(json.toString(2).getBytes());
+            }
+
+            return true;
+
+        } catch (org.json.JSONException | IOException e) {
+            return false;
+        }
+    }
+
+    /* ===========================
+       8. אודות
+       =========================== */
+
+    public static void showAboutDialog(Context context, SettingsManager settings) {
+
+        LinearLayout container = newContainer(context);
+
+        String versionName;
+
+        try {
+            versionName = context.getPackageManager()
+                    .getPackageInfo(context.getPackageName(), 0).versionName;
+        } catch (PackageManager.NameNotFoundException e) {
+            versionName = "לא ידוע";
+        }
+
+        TextView info = new TextView(context);
+        info.setText("KeyLauncher\nגרסה: " + versionName +
+                "\n\nלאנצ'ר מותאם למכשירי מקשים.");
+        container.addView(info);
+
+        Button restoreDefaultsButton = new Button(context);
+        restoreDefaultsButton.setText("שחזר את כל ההגדרות לברירת מחדל");
+        container.addView(restoreDefaultsButton);
+
+        AlertDialog dialog = new AlertDialog.Builder(context)
+                .setTitle("אודות")
+                .setView(scrollable(context, container))
+                .setPositiveButton("סגור", null)
+                .create();
+
+        restoreDefaultsButton.setOnClickListener(v -> {
+
+            settings.display.restoreDefaults();
+            settings.apps.restoreDefaults();
+            settings.folders.restoreDefaults();
+            settings.keys.restoreDefaults();
+            settings.mouse.restoreDefaults();
+            settings.widgets.restoreDefaults();
+            settings.backup.restoreDefaults();
+
+            Toast.makeText(context, "כל ההגדרות שוחזרו לברירת מחדל", Toast.LENGTH_SHORT).show();
+
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+}
