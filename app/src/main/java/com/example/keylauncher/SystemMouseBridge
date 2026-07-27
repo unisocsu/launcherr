@@ -1,0 +1,163 @@
+package com.example.keylauncher;
+
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.ContentResolver;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Build;
+import android.os.Process;
+import android.provider.Settings;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+/**
+ * גשר לתכונת "מצב עכבר" האמיתית של המערכת (כפי שנראה בקוד ה-smali
+ * של com.android.settings.applications.MouseControlerFragment):
+ *
+ * המערכת שומרת ב-Settings.Global מפתח בשם "mouse_support_list" -
+ * מחרוזת מופרדת בפסיקים של שמות חבילות (packageName) שעבורן מוצג
+ * סמן עכבר. הפורמט המדויק שנצפה: "pkg1,pkg2,pkg3," (פסיק אחרי כל
+ * ערך, כולל האחרון).
+ *
+ * דורש שההרשאה WRITE_SECURE_SETTINGS תהיה מוענקת לאפליקציה (למשל
+ * ע"י התקנה כאפליקציית מערכת/privileged ברום, או:
+ * adb shell pm grant com.example.keylauncher android.permission.WRITE_SECURE_SETTINGS)
+ */
+public class SystemMouseBridge {
+
+    private static final String SETTING_KEY = "mouse_support_list";
+
+    private SystemMouseBridge() {
+    }
+
+    /**
+     * בודק אם packageName מופיע ברשימת האפליקציות שעבורן מוצג עכבר.
+     */
+    public static boolean isEnabledForPackage(ContentResolver resolver, String packageName) {
+
+        Set<String> current = readList(resolver);
+        return current.contains(packageName);
+    }
+
+    /**
+     * מפעיל/מכבה את מצב העכבר עבור packageName ספציפי, ושומר בחזרה
+     * ל-Settings.Global באותו פורמט שהמערכת המקורית משתמשת בו.
+     *
+     * @return true אם ההגדרה נשמרה בהצלחה, false אם אין הרשאה
+     *         (למשל WRITE_SECURE_SETTINGS לא מוענקת).
+     */
+    public static boolean setEnabledForPackage(ContentResolver resolver,
+                                                String packageName,
+                                                boolean enabled) {
+
+        Set<String> current = readList(resolver);
+
+        if (enabled) {
+            current.add(packageName);
+        } else {
+            current.remove(packageName);
+        }
+
+        return writeList(resolver, current);
+    }
+
+    /**
+     * הופך את מצב העכבר עבור packageName (מופעל -> מכובה ולהפך).
+     *
+     * @return המצב החדש (true = הופעל), או המצב הישן אם הכתיבה נכשלה.
+     */
+    public static boolean toggleForPackage(ContentResolver resolver, String packageName) {
+
+        boolean currentlyEnabled = isEnabledForPackage(resolver, packageName);
+        boolean newState = !currentlyEnabled;
+
+        boolean saved = setEnabledForPackage(resolver, packageName, newState);
+
+        return saved ? newState : currentlyEnabled;
+    }
+
+    private static Set<String> readList(ContentResolver resolver) {
+
+        Set<String> result = new LinkedHashSet<>();
+
+        String raw;
+
+        try {
+            raw = Settings.Global.getString(resolver, SETTING_KEY);
+        } catch (SecurityException e) {
+            raw = null;
+        }
+
+        if (raw == null || raw.trim().isEmpty()) {
+            return result;
+        }
+
+        for (String token : raw.split(",")) {
+
+            String trimmed = token.trim();
+
+            if (!trimmed.isEmpty()) {
+                result.add(trimmed);
+            }
+
+        }
+
+        return result;
+    }
+
+    private static boolean writeList(ContentResolver resolver, Set<String> packages) {
+
+        StringBuilder builder = new StringBuilder();
+
+        for (String pkg : packages) {
+            builder.append(pkg).append(",");
+        }
+
+        try {
+            return Settings.Global.putString(resolver, SETTING_KEY, builder.toString());
+        } catch (SecurityException e) {
+            // אין הרשאת WRITE_SECURE_SETTINGS - לא ניתן לכתוב.
+            return false;
+        }
+    }
+
+    /**
+     * מפעיל מחדש את הלאנצ'ר (מחדש את כל התהליך, לא רק את ה-Activity),
+     * כדי שהמערכת תיישם את שינוי מצב העכבר. משתמש בטריק הסטנדרטי:
+     * מתזמן PendingIntent לפתיחה מחדש, ואז הורג את התהליך הנוכחי.
+     */
+    public static void restartLauncher(Context context) {
+
+        Intent restartIntent = new Intent(context, MainActivity.class);
+
+        restartIntent.addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK
+                        | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+
+        int flags = PendingIntent.FLAG_CANCEL_CURRENT;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                context, 0, restartIntent, flags);
+
+        AlarmManager alarmManager =
+                (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+
+        if (alarmManager != null) {
+
+            alarmManager.set(
+                    AlarmManager.RTC,
+                    System.currentTimeMillis() + 200,
+                    pendingIntent);
+
+        }
+
+        Process.killProcess(Process.myPid());
+    }
+
+}
